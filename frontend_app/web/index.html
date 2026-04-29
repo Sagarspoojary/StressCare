@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="description" content="Flutter App">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- ✅ REQUIRED -->
+  <base href="/">
+
+  <title>Flutter App</title>
+
+  <!-- Google Sign-In Client ID -->
+  <meta name="google-signin-client_id" content="658312207862-1atk3gothavrp390c09o3sk96h0q8ott.apps.googleusercontent.com">
+
+  <!-- Flutter loader -->
+  <script src="flutter.js" defer></script>
+</head>
+
+<body>
+  <script>
+    window.addEventListener('load', function () {
+      _flutter.loader.loadEntrypoint({
+        onEntrypointLoaded: function (engineInitializer) {
+          engineInitializer.initializeEngine().then(function (appRunner) {
+            appRunner.runApp();
+          });
+        }
+      });
+    });
+  </script>
+</body>
+</html>
