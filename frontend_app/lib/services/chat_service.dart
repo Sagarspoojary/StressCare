@@ -1,14 +1,19 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'firestore_service.dart';
+import '../config/api_config.dart';
 
 class ChatService {
-  static const String baseUrl = "http://127.0.0.1:8000";
+  static const String baseUrl = ApiConfig.baseUrl;
 
   // 📤 SEND MESSAGE TO BACKEND
   static Future<Map<String, dynamic>> sendMessage({
     required String message,
     required bool ghostMode,
+    String session_id = "default",
+    String inputType = "text",
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString("auth_token");
@@ -21,10 +26,52 @@ class ChatService {
       },
       body: jsonEncode({
         "message": message,
+        "session_id": session_id,
         "ghost_mode": ghostMode,
+        "input_type": inputType,
       }),
     );
-    return jsonDecode(res.body);
+    
+    final decodedBody = utf8.decode(res.bodyBytes);
+    final data = jsonDecode(decodedBody);
+    print("API RESPONSE: $data");
+    
+    // 🔥 Firebase Integration (Save chat history)
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await FirestoreService.saveChatHistory(user.uid, message, true);
+        if (data["response"] != null) {
+          await FirestoreService.saveChatHistory(user.uid, data["response"], false);
+        }
+      }
+    } catch (e) {
+      print("Firebase Save Chat Error: $e");
+    }
+
+    return data;
+  }
+
+  // 🔒 UPDATE PRIVACY STATUS
+  static Future<Map<String, dynamic>> updatePrivacy({
+    required String chatId,
+    required bool isPrivate,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString("auth_token");
+
+    final res = await http.put(
+      Uri.parse("$baseUrl/chat/privacy"),
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $token",
+      },
+      body: jsonEncode({
+        "chat_id": chatId,
+        "is_private": isPrivate,
+      }),
+    );
+    return jsonDecode(utf8.decode(res.bodyBytes));
   }
 
   // 💾 GET CHAT HISTORY
@@ -39,7 +86,8 @@ class ChatService {
       },
     );
     
-    final data = jsonDecode(res.body);
+    final decodedBody = utf8.decode(res.bodyBytes);
+    final data = jsonDecode(decodedBody);
     return data["messages"] ?? [];
   }
 
@@ -54,7 +102,8 @@ class ChatService {
         "Authorization": "Bearer $token",
       },
     );
-    return jsonDecode(res.body);
+    final decodedBody = utf8.decode(res.bodyBytes);
+    return jsonDecode(decodedBody);
   }
 
   // 📊 GET STRESS TRENDS
@@ -69,7 +118,24 @@ class ChatService {
       },
     );
     
-    final data = jsonDecode(res.body);
-    return data["trends"] ?? [];
+    final decodedBody = utf8.decode(res.bodyBytes);
+    final data = jsonDecode(decodedBody);
+    final trends = data["trends"] ?? [];
+    
+    // 🔥 Firebase Integration (Save stress reports)
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null && trends.isNotEmpty) {
+        for (var trend in trends) {
+          if (trend is Map<String, dynamic>) {
+            await FirestoreService.saveStressReport(user.uid, trend);
+          }
+        }
+      }
+    } catch (e) {
+      print("Firebase Save Stress Report Error: $e");
+    }
+
+    return trends;
   }
 }

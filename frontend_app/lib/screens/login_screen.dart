@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
 import '../services/google_auth_service.dart';
 import '../widgets/auth_layout.dart';
+import '../core/constants/app_colors.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -17,19 +20,19 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _loading = false;
   bool _obscure = true;
 
-  // Healthcare Theme Colors
-  final Color _primaryColor = const Color(0xFF00796B); // Teal 700
-  final Color _surfaceColor = Colors.white;
-  final Color _backgroundColor = const Color(0xFFF5F7FA); // Soft cool grey
-  final Color _textColor = const Color(0xFF263238); // BlueGrey 900
+  // Healthcare Theme Colors (Using AppColors)
+  Color get _primaryColor => AppColors.primary;
+  Color get _surfaceColor => AppColors.surface;
+  Color get _backgroundColor => AppColors.background;
+  Color get _textColor => AppColors.textDark;
 
   void _showSnack(String msg, {bool isError = true}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg),
-        backgroundColor: isError ? Colors.red.shade700 : _primaryColor,
+        backgroundColor: isError ? AppColors.highStress : _primaryColor,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
@@ -88,6 +91,35 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  // 🔑 FORGOT PASSWORD
+  Future<void> _forgotPassword() async {
+    final email = _emailCtrl.text.trim();
+    if (email.isEmpty) {
+      _showSnack("Please enter your email address first");
+      return;
+    }
+
+    setState(() => _loading = true);
+    try {
+      // Check if email exists in Firestore first
+      final usersRef = FirebaseFirestore.instance.collection("users");
+      final snapshot = await usersRef.where("email", isEqualTo: email).limit(1).get();
+      
+      if (snapshot.docs.isEmpty) {
+        setState(() => _loading = false);
+        _showSnack("This email is not registered. Please sign up first!");
+        return;
+      }
+
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      setState(() => _loading = false);
+      _showSnack("Reset link sent to your email!", isError: false);
+    } catch (e) {
+      setState(() => _loading = false);
+      _showSnack("Error: ${e.toString()}");
+    }
+  }
+
   Widget _buildTextField({
     required TextEditingController controller,
     required String hint,
@@ -100,32 +132,33 @@ class _LoginScreenState extends State<LoginScreen> {
       style: TextStyle(color: _textColor),
       decoration: InputDecoration(
         labelText: hint,
-        labelStyle: TextStyle(color: Colors.grey[600]),
-        prefixIcon: Icon(icon, color: _primaryColor),
+        labelStyle: TextStyle(color: AppColors.textGrey, fontSize: 14),
+        prefixIcon: Icon(icon, color: _primaryColor, size: 20),
         suffixIcon: isPassword
             ? IconButton(
                 icon: Icon(
                   _obscure ? Icons.visibility_off : Icons.visibility,
-                  color: Colors.grey[600],
+                  color: AppColors.textGrey,
+                  size: 20,
                 ),
                 onPressed: () => setState(() => _obscure = !_obscure),
               )
             : null,
         filled: true,
-        fillColor: _surfaceColor,
+        fillColor: _backgroundColor.withOpacity(0.5),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey[300]!),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: AppColors.border),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey[300]!),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: AppColors.border),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide(color: _primaryColor, width: 2),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
       ),
     );
   }
@@ -135,27 +168,37 @@ class _LoginScreenState extends State<LoginScreen> {
     return AuthLayout(
       title: "Sign In",
       formContent: Container(
-        width: 400, // Max width for larger screens
+        width: 450,
         decoration: BoxDecoration(
           color: _surfaceColor,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withOpacity(0.04),
               blurRadius: 20,
               offset: const Offset(0, 10),
             ),
           ],
+          border: Border.all(color: AppColors.border),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(32),
+          padding: const EdgeInsets.all(40),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // 🌟 Header
-              Icon(Icons.local_hospital_rounded, size: 56, color: _primaryColor),
-              const SizedBox(height: 24),
+              const Text(
+                "STRESSCARE",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 2,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(height: 32),
               Text(
                 "Welcome Back",
                 textAlign: TextAlign.center,
@@ -163,16 +206,16 @@ class _LoginScreenState extends State<LoginScreen> {
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
                   color: _textColor,
-                  letterSpacing: 0.5,
+                  letterSpacing: -0.5,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
-                "Sign in to continue your care journey",
+                "Sign in to continue your wellness journey",
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,
-                  color: Colors.grey[600],
+                  color: AppColors.textGrey,
                 ),
               ),
               const SizedBox(height: 32),
@@ -187,64 +230,87 @@ class _LoginScreenState extends State<LoginScreen> {
               _buildTextField(
                 controller: _passwordCtrl,
                 hint: "Password",
-                icon: Icons.lock_outline,
+                icon: Icons.lock_outline_rounded,
                 isPassword: true,
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 12),
+              
+              // 🔑 Forgot Password
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: _forgotPassword,
+                  child: Text(
+                    "Forgot Password?",
+                    style: TextStyle(
+                      color: _primaryColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
 
               // 🔘 Login Button
               _loading
                   ? Center(child: CircularProgressIndicator(color: _primaryColor))
-                  : ElevatedButton(
-                      onPressed: _login,
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        backgroundColor: _primaryColor,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 0,
+                  : Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(color: _primaryColor.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 6)),
+                        ],
                       ),
-                      child: const Text(
-                        "SIGN IN",
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1),
+                      child: ElevatedButton(
+                        onPressed: _login,
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 18),
+                          backgroundColor: _primaryColor,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: const Text(
+                          "SIGN IN",
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1),
+                        ),
                       ),
                     ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 32),
 
               // 〰️ Divider
               Row(
                 children: [
-                  Expanded(child: Divider(color: Colors.grey[300])),
+                  Expanded(child: Divider(color: AppColors.border)),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text("OR", style: TextStyle(color: Colors.grey[500], fontWeight: FontWeight.w600)),
+                    child: Text("OR", style: TextStyle(color: AppColors.textGrey, fontWeight: FontWeight.bold, fontSize: 12)),
                   ),
-                  Expanded(child: Divider(color: Colors.grey[300])),
+                  Expanded(child: Divider(color: AppColors.border)),
                 ],
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 32),
 
               // 🔵 Google Button
               OutlinedButton.icon(
                 onPressed: _loading ? null : _googleLogin,
-                icon: Image.network(
-                  'https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg',
-                  height: 24,
-                  errorBuilder: (context, error, stackTrace) => const Icon(Icons.g_mobiledata, color: Colors.blue, size: 32),
+                icon: Image.asset(
+                  'assets/google_logo.png',
+                  height: 20,
                 ),
-                label: const Text(
+                label: Text(
                   "Continue with Google",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.black87, fontSize: 15, fontWeight: FontWeight.w600),
+                  style: TextStyle(color: _textColor, fontSize: 14, fontWeight: FontWeight.w600),
                 ),
                 style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-                  side: BorderSide(color: Colors.grey[300]!),
-                  backgroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  side: BorderSide(color: AppColors.border),
+                  backgroundColor: _surfaceColor,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16),
                   ),
                 ),
               ),
@@ -254,7 +320,7 @@ class _LoginScreenState extends State<LoginScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text("Don't have an account? ", style: TextStyle(color: Colors.grey[600])),
+                  Text("Don't have an account? ", style: TextStyle(color: AppColors.textGrey)),
                   GestureDetector(
                     onTap: () {
                       if (mounted) Navigator.pushReplacementNamed(context, "/signup");

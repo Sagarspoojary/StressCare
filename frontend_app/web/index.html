@@ -16,9 +16,22 @@
 
   <!-- Flutter loader -->
   <script src="flutter.js" defer></script>
+  
+  <!-- WaveSurfer.js for Audio Waveforms -->
+  <script src="https://unpkg.com/wavesurfer.js"></script>
+  
+  <!-- Face Detection (face-api.js) -->
+  <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 </head>
 
 <body>
+  <!-- 📷 Camera Modal -->
+  <div id="cameraModal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:white; padding:15px; border-radius:15px; box-shadow:0 10px 30px rgba(0,0,0,0.3); z-index:9999; text-align:center;">
+    <h3 style="margin-top:0; color:#2C3E50;">Live Emotion Detection</h3>
+    <video id="video" width="320" height="240" autoplay muted style="border-radius:10px; background:#000;"></video>
+    <div id="emotionLabel" style="margin-top:10px; font-size:18px; font-weight:bold; color:#4A90E2;">Initialising...</div>
+    <button onclick="closeCamera()" style="margin-top:15px; padding:8px 20px; background:#FF5252; color:white; border:none; border-radius:5px; cursor:pointer;">Close Camera</button>
+  </div>
   <script>
     window.addEventListener('load', function () {
       _flutter.loader.loadEntrypoint({
@@ -29,6 +42,121 @@
         }
       });
     });
+
+    // ✅ Waveform Management
+    window.waveInstances = {};
+
+    function initWaveform(divId, audioUrl) {
+      console.log('Initialising Waveform for:', audioUrl);
+      setTimeout(() => {
+        const container = document.getElementById(divId);
+        if (!container) {
+          console.warn('Waveform container not found:', divId);
+          return;
+        }
+
+        // Cleanup if already exists
+        if (window.waveInstances[divId]) {
+          window.waveInstances[divId].destroy();
+        }
+
+        try {
+          const wavesurfer = WaveSurfer.create({
+            container: container,
+            waveColor: '#4A90E2',
+            progressColor: '#2C3E50',
+            height: 44,
+            barWidth: 3,
+            barGap: 2,
+            barRadius: 4,
+            normalize: true,
+            cursorWidth: 1,
+            cursorColor: '#2C3E50',
+            interact: true,
+            hideScrollbar: true,
+            responsive: true
+          });
+
+          wavesurfer.on('error', (e) => {
+            console.error('WaveSurfer Error on ' + divId + ':', e);
+            container.innerHTML = '<div style="color:#E74C3C; font-size:10px; padding:10px; text-align:center;">Load Error: ' + e + '</div>';
+          });
+
+          wavesurfer.on('ready', () => {
+            console.log('Waveform ready:', divId);
+          });
+
+          wavesurfer.load(audioUrl);
+          window.waveInstances[divId] = wavesurfer;
+        } catch (err) {
+          console.error('WaveSurfer Init Exception:', err);
+          container.innerHTML = '<div style="color:red; font-size:10px;">Init Error</div>';
+        }
+      }, 300);
+    }
+
+    function toggleWaveform(divId) {
+      const ws = window.waveInstances[divId];
+      if (ws) {
+        ws.playPause();
+        return ws.isPlaying();
+      }
+      return false;
+    }
+
+    // 📷 Camera & Face Detection Logic
+    let stream = null;
+    let detectionInterval = null;
+
+    async function openCamera(callback) {
+      document.getElementById('cameraModal').style.display = 'block';
+      const video = document.getElementById('video');
+      const label = document.getElementById('emotionLabel');
+
+      try {
+        // Load Models if not loaded
+        if (!faceapi.nets.tinyFaceDetector.params) {
+          label.innerText = "Loading Models...";
+          await faceapi.nets.tinyFaceDetector.loadFromUri('/models');
+          await faceapi.nets.faceExpressionNet.loadFromUri('/models');
+        }
+
+        stream = await navigator.mediaDevices.getUserMedia({ video: {} });
+        video.srcObject = stream;
+
+        label.innerText = "Detecting...";
+        
+        detectionInterval = setInterval(async () => {
+          const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions()).withFaceExpressions();
+          
+          if (detections.length > 0) {
+            const expressions = detections[0].expressions;
+            const emotion = Object.keys(expressions).reduce((a, b) => expressions[a] > expressions[b] ? a : b);
+            
+            label.innerText = "Detected: " + emotion.toUpperCase();
+            
+            // Send back to Flutter
+            if (callback) callback(emotion);
+          } else {
+            label.innerText = "No Face Detected";
+          }
+        }, 1000);
+
+      } catch (err) {
+        console.error("Camera Error:", err);
+        label.innerText = "Camera Error: " + err.message;
+      }
+    }
+
+    function closeCamera() {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+      if (detectionInterval) {
+        clearInterval(detectionInterval);
+      }
+      document.getElementById('cameraModal').style.display = 'none';
+    }
   </script>
 </body>
 </html>

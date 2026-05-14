@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/constants/app_colors.dart';
 
 class AuthLayout extends StatelessWidget {
   final Widget formContent;
@@ -16,13 +17,19 @@ class AuthLayout extends StatelessWidget {
 
     if (isDesktop) {
       return Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.surface,
         body: Row(
           children: [
             Expanded(
               flex: 5,
               child: Container(
-                color: const Color(0xFF00796B), // Teal 700
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [AppColors.primary, AppColors.secondary],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
                 padding: const EdgeInsets.symmetric(horizontal: 60, vertical: 40),
                 child: Center(
                   child: SingleChildScrollView(
@@ -35,7 +42,7 @@ class AuthLayout extends StatelessWidget {
             Expanded(
               flex: 4,
               child: Container(
-                color: const Color(0xFFF5F7FA), // Light grey
+                color: AppColors.background,
                 child: Center(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.all(40),
@@ -51,26 +58,26 @@ class AuthLayout extends StatelessWidget {
 
     // Mobile Layout
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: SingleChildScrollView(
           child: Column(
             children: [
               Container(
                 width: double.infinity,
-                color: const Color(0xFF00796B),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [AppColors.primary, AppColors.secondary],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
                 padding: const EdgeInsets.all(32),
                 child: _buildCopy(isDesktop: false),
               ),
               Padding(
                 padding: const EdgeInsets.all(24),
                 child: formContent,
-              ),
-              Container(
-                width: double.infinity,
-                color: const Color(0xFF00796B),
-                padding: const EdgeInsets.all(32),
-                child: _buildFooter(),
               ),
             ],
           ),
@@ -81,56 +88,41 @@ class AuthLayout extends StatelessWidget {
 
   Widget _buildCopy({required bool isDesktop}) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const Icon(Icons.health_and_safety_rounded, color: Colors.white, size: 48),
-        const SizedBox(height: 24),
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.2),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.health_and_safety_rounded, color: Colors.white, size: 64),
+        ),
+        const SizedBox(height: 32),
         const Text(
-          "Healing is a quiet revolution.",
+          "Your Mental Wellness Matters",
+          textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 36,
             fontWeight: FontWeight.bold,
             color: Colors.white,
-            height: 1.2,
+            height: 1.1,
+            letterSpacing: -1,
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
         Text(
-          "We believe that healthcare should feel like a deep breath. Our approach combines clinical precision with the warmth of human connection to nurture your mind, body, and spirit.",
+          "Experience secure, private, and AI-powered care designed for your modern life.",
+          textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: 16,
+            fontSize: 18,
             color: Colors.white.withOpacity(0.9),
             height: 1.5,
           ),
         ),
-        if (isDesktop) ...[
-          const SizedBox(height: 48),
-          _buildFeature("The Pulse of Care", "We don’t just treat symptoms; we listen to stories. Your journey is unique, and your treatment should be too."),
-          const SizedBox(height: 24),
-          _buildFeature("A Modern Sanctuary", "Our space is designed for clarity, safety, and recovery. We’ve removed the clinical coldness and replaced it with an environment where you can truly feel at ease."),
-          const SizedBox(height: 24),
-          _buildFeature("Expertise in Motion", "Leading-edge technology meets intuitive, patient-first practitioners. We stay at the forefront of medicine so you can stay at the center of your life."),
-          const SizedBox(height: 48),
-          _buildFooter(),
-        ]
-      ],
-    );
-  }
-
-  Widget _buildFeature(String title, String desc) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 18),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          desc,
-          style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 14, height: 1.4),
-        ),
+        const SizedBox(height: 48),
+        _buildFooter(),
       ],
     );
   }
@@ -139,23 +131,18 @@ class AuthLayout extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Divider(color: Colors.white24),
-        const SizedBox(height: 16),
-        const Text(
-          "Your health, held in good hands.",
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 16),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          "Trust is the foundation of every treatment plan. We are dedicated to providing accessible, honest, and compassionate care for every stage of your life.",
-          style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 13, height: 1.4),
-        ),
+        Divider(color: Colors.white.withOpacity(0.3)),
         const SizedBox(height: 24),
+        const Text(
+          "Modern Care Pathways",
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 18),
+        ),
+        const SizedBox(height: 16),
         _buildBulletPoint("Radical Empathy: We see the person behind the patient."),
-        const SizedBox(height: 8),
-        _buildBulletPoint("Transparent Paths: No jargon—just clear steps toward wellness."),
-        const SizedBox(height: 8),
-        _buildBulletPoint("Proactive Defense: Modern diagnostics that stay two steps ahead."),
+        const SizedBox(height: 12),
+        _buildBulletPoint("Transparent Privacy: Your data is always encrypted and private."),
+        const SizedBox(height: 12),
+        _buildBulletPoint("Proactive Defense: AI diagnostics that stay ahead of stress."),
       ],
     );
   }
@@ -164,12 +151,12 @@ class AuthLayout extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Icon(Icons.check_circle_outline, color: Colors.white, size: 18),
-        const SizedBox(width: 8),
+        const Icon(Icons.check_circle_outline, color: Colors.white, size: 20),
+        const SizedBox(width: 12),
         Expanded(
           child: Text(
             text,
-            style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 13),
+            style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 14, height: 1.4),
           ),
         ),
       ],

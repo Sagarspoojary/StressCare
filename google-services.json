@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "279179097492",
+    "project_id": "stresscare-c1cfb",
+    "storage_bucket": "stresscare-c1cfb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:279179097492:android:9760644ba188d72f0acb81",
+        "android_client_info": {
+          "package_name": "com.example.frontend_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "279179097492-qu6bpp493h0pf077vde337jt55mkadpk.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCsPlaPISsVVVGffA0Pzc5Ks7DACuOru50"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "279179097492-qu6bpp493h0pf077vde337jt55mkadpk.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
