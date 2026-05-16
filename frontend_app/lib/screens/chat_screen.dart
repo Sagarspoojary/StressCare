@@ -330,7 +330,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           // Find the last user message and update it with the masked version from backend
           for (int i = _messages.length - 1; i >= 0; i--) {
             if (_messages[i]["role"] == "user") {
-              _messages[i]["content"] = res["masked_message"] ?? _messages[i]["content"];
+              _messages[i]["content"] = res["masked_text"] ?? res["masked_message"] ?? _messages[i]["content"];
               break;
             }
           }
