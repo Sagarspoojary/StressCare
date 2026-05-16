@@ -40,9 +40,10 @@ class ChatService {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
-        await FirestoreService.saveChatHistory(user.uid, message, true);
-        if (data["response"] != null) {
-          await FirestoreService.saveChatHistory(user.uid, data["response"], false);
+        final textToSave = data["masked_text"] ?? message;
+        await FirestoreService.saveChatHistory(user.uid, textToSave, true);
+        if (data["ai_response"] != null) {
+          await FirestoreService.saveChatHistory(user.uid, data["ai_response"], false);
         }
       }
     } catch (e) {

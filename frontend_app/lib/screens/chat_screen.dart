@@ -15,6 +15,7 @@ import '../services/chat_service.dart';
 import 'trends_screen.dart';
 import '../config/api_config.dart';
 import '../utils/web_helper.dart';
+import 'face_detection_screen.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -56,12 +57,16 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           _openFilePicker();
         }
       } else {
-        // Mobile behavior remains unchanged
-        final XFile? photo = await _picker.pickImage(source: ImageSource.camera);
-        if (photo != null) {
+        // Mobile behavior: Navigate to FaceDetectionScreen
+        final result = await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const FaceDetectionScreen()),
+        );
+        
+        if (result != null && result is String) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("Image captured")),
+              SnackBar(content: Text(result)),
             );
           }
         }
@@ -205,9 +210,9 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
             "content": content,
             "stress_level": m["stress_level"],
             "emotion": detectedEmotion,
-            "burnout_score": m["score"] ?? m["burnout_score"],
+            "stress_score": m["score"] ?? m["stress_score"],
             "timestamp": m["timestamp"] ?? m["created_at"] ?? DateTime.now().toIso8601String(),
-            "suggestion": m["suggestion"] ?? "",
+            "analysis": m["analysis"] ?? "",
             "is_private": m["is_private"] ?? false,
             "emergency": m["emergency"] == true,
           };
@@ -349,13 +354,13 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           _messages.add({
             "chat_id": res["chat_id"],
             "role": "assistant",
-            "content": _unmaskText(res["message"] ?? ""),
-            "stress_level": res["stress_level"],
+            "content": _unmaskText(res["ai_response"] ?? ""),
+            "stress_score": res["stress_score"],
+            "stress_level": res["stress_level"] ?? "low",
             "emotion": res["emotion"],
-            "burnout_score": res["burnout_score"],
-            "suggestion": res["suggestion"],
-            "actions": res["actions"],
-            "indicator": res["indicator"],
+            "confidence": res["confidence"],
+            "analysis": res["analysis"],
+            "wellness_tip": res["wellness_tip"],
             "emergency": res["emergency"] == true,
           });
         });
@@ -538,8 +543,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           "role": "assistant",
           "content": "I've analyzed your voice message. You sound ${data['emotion']}.",
           "emotion": data["emotion"],
-          "stress_level": data["stress_level"],
-          "burnout_score": data["burnout_score"],
+          "stress_level": data["stress_level"] ?? "low",
+          "stress_score": data["stress_score"] ?? data["burnout_score"],
           "emergency": data["emergency"],
         });
       });
@@ -706,12 +711,32 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
               
               if (_loading)
                 Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  padding: const EdgeInsets.symmetric(vertical: 12.0),
                   child: Center(
-                    child: SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: primaryColor),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: surfaceColor,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(color: primaryColor.withOpacity(0.1), blurRadius: 10)
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            width: 12,
+                            height: 12,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: primaryColor),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            "StressCare is thinking...",
+                            style: TextStyle(color: primaryColor, fontSize: 12, fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -861,6 +886,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildModernMessageBubble(Map<String, dynamic> msg, bool isUser) {
+    final Color stressColor = isUser ? Colors.transparent : _getStressColor(msg["stress_level"]);
+    
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Padding(
@@ -887,12 +914,12 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: isUser ? primaryColor.withOpacity(0.2) : Colors.black.withOpacity(0.03),
+                    color: isUser ? primaryColor.withOpacity(0.2) : stressColor.withOpacity(0.08),
                     blurRadius: 15,
                     offset: const Offset(0, 6),
                   ),
                 ],
-                border: isUser ? null : Border.all(color: AppColors.border.withOpacity(0.5)),
+                border: isUser ? null : Border.all(color: stressColor.withOpacity(0.3), width: 1.5),
               ),
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -914,9 +941,21 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                       ),
                       
                     if (!isUser) ...[
+                      if (msg["analysis"] != null && msg["analysis"].toString().isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8, bottom: 4),
+                          child: Text(
+                            "Analysis: ${msg["analysis"]}",
+                            style: TextStyle(
+                              color: textColor.withOpacity(0.6),
+                              fontSize: 12,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ),
                       _buildStressIndicator(msg),
-                      if (msg["suggestion"] != null && msg["suggestion"].toString().isNotEmpty)
-                        _buildAIsuggestion(msg["suggestion"]),
+                      if (msg["wellness_tip"] != null && msg["wellness_tip"].toString().isNotEmpty)
+                        _buildAIsuggestion(msg["wellness_tip"]),
                     ],
                   ],
                 ),
@@ -963,9 +1002,9 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildStressIndicator(Map<String, dynamic> msg) {
-    if (msg["burnout_score"] == null) return const SizedBox();
+    if (msg["stress_score"] == null) return const SizedBox();
     final color = _getStressColor(msg["stress_level"]);
-    final score = msg["burnout_score"] is int ? msg["burnout_score"] : 0;
+    final score = msg["stress_score"] is num ? (msg["stress_score"] as num).toInt() : 0;
     
     return Padding(
       padding: const EdgeInsets.only(top: 16),
@@ -975,8 +1014,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text("Burnout Analysis", style: TextStyle(color: textColor.withOpacity(0.6), fontSize: 11, fontWeight: FontWeight.w600)),
-              Text("$score%", style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold)),
+              Text("Stress Score", style: TextStyle(color: textColor.withOpacity(0.6), fontSize: 11, fontWeight: FontWeight.w600)),
+              Text("$score", style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold)),
             ],
           ),
           const SizedBox(height: 6),
