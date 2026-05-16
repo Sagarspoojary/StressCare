@@ -1,0 +1,13 @@
+# Ignore environment variables
+.env
+.env.*
+
+# Ignore Firebase service accounts
+*.json
+stresscare-*.json
+
+# Ignore Python specific
+__pycache__/
+*.pyc
+venv/
+env/

@@ -77,15 +77,15 @@ def send_message(
 
     # 🔴 STEP 1: DEFINE SAFE DEFAULTS (TOP OF FUNCTION)
     ai_response = {
-        "message": "I'm here for you. 💙",
-        "stress_level": "low",
-        "burnout_score": 20,
+        "ai_response": "I'm here for you. 💙",
+        "stress_score": 20,
         "emotion": "neutral",
-        "suggestion": "Take a moment to breathe.",
-        "actions": [],
-        "intent": "normal"
+        "confidence": 0.5,
+        "analysis": "Based on your message.",
+        "wellness_tip": "Take a moment to breathe.",
+        "stress_level": "low"
     }
-    ai_message = ai_response["message"]
+    ai_message = ai_response["ai_response"]
     summary = {"trend": "stable", "avg_stress": 20, "max_stress": 20}
     stress_history = []
     emergency = False
@@ -106,9 +106,11 @@ def send_message(
         emergency = False
         ai_response["emotion"] = "calmness"
         ai_response["stress_level"] = "low"
-        ai_response["burnout_score"] = 25
-        ai_response["message"] = "I'm really glad to hear that you're feeling better. That's a positive step forward 💙"
-        ai_message = ai_response["message"]
+        ai_response["stress_score"] = 15
+        ai_response["confidence"] = 0.9
+        ai_response["analysis"] = "User indicated feeling better."
+        ai_response["ai_response"] = "I'm really glad to hear that you're feeling better. That's a positive step forward 💙"
+        ai_message = ai_response["ai_response"]
     
     # Step 2: Fetch Context & History for patterns
     if not db:
@@ -143,7 +145,7 @@ def send_message(
         )
         if gemini_output:
             ai_response.update(gemini_output)
-            ai_message = ai_response.get("message", ai_message)
+            ai_message = ai_response.get("ai_response", ai_message)
     except Exception as e:
         print(f"!!! GEMINI API ERROR !!!: {e}")
     
@@ -176,17 +178,18 @@ def send_message(
     if emergency and not recovery:
         ai_response["emotion"] = "stress"
         ai_response["stress_level"] = "high"
-        ai_response["burnout_score"] = max(ai_response.get("burnout_score", 0), 90)
-        
-        ai_response["message"] = (
+        ai_response["stress_score"] = max(ai_response.get("stress_score", 0), 90)
+        ai_response["confidence"] = 0.95
+        ai_response["analysis"] = "High risk emergency phrases detected."
+        ai_response["ai_response"] = (
             "I'm really concerned about you. It sounds like you're going through something very overwhelming. "
             "You are not alone in this. Please try to reach out to someone you trust right now. "
             "If possible, contact a mental health helpline immediately."
         )
-        ai_message = ai_response["message"]
+        ai_message = ai_response["ai_response"]
 
     # Calculate summary based on final score
-    final_score = ai_response.get("burnout_score", 20)
+    final_score = ai_response.get("stress_score", 20)
     all_scores = stress_history + [final_score]
     summary = {
         "avg_stress": sum(all_scores) / len(all_scores),
@@ -199,37 +202,34 @@ def send_message(
         chats_ref.add({
             "user_id": user_id,
             "session_id": data.session_id,
-            "user_message": data.message,
-            "masked_message": masked_message,
+            "user_message": masked_message,
             "ai_response": ai_message,
             "emotion": ai_response.get("emotion", "neutral"),
             "score": final_score,
             "stress_level": ai_response.get("stress_level", "low"),
+            "analysis": ai_response.get("analysis", ""),
             "emergency": bool(emergency),
+            "empathy_score": ai_response.get("empathy_score", 50),
+            "emotional_confidence": ai_response.get("emotional_confidence", 0.5),
+            "stress_confidence": ai_response.get("stress_confidence", 0.5),
+            "warmth_score": ai_response.get("warmth_score", 50),
             "is_private": False,
             "created_at": datetime.datetime.utcnow()
         })
 
-    # 🔴 STEP 7: FINAL SAFE RETURN (NO CRASH GUARANTEED)
+    # 🔴 STEP 7: FINAL SAFE RETURN
     return JSONResponse(
         content={
-            "message": ai_message,
-            "stress_level": ai_response.get("stress_level", "low"),
-            "indicator": {
-                "low": ai_response.get("stress_level", "low").lower() == "low",
-                "medium": ai_response.get("stress_level", "low").lower() == "medium",
-                "high": ai_response.get("stress_level", "low").lower() == "high"
-            },
-            "suggestion": ai_response.get("suggestion", ""),
-            "actions": ai_response.get("actions", []),
+            "masked_text": masked_message,
             "emotion": ai_response.get("emotion", "neutral"),
-            "burnout_score": final_score,
-            "intent": ai_response.get("intent", "normal"),
-            "emergency": bool(emergency),
-            "trend": summary.get("trend", "stable"),
-            "summary": summary,
-            "history": stress_history,
-            "masked_message": masked_message
+            "stress_score": final_score,
+            "analysis": ai_response.get("analysis", "Context analyzed successfully."),
+            "ai_response": ai_message,
+            "wellness_tip": ai_response.get("wellness_tip", "Take a moment to relax."),
+            "empathy_score": ai_response.get("empathy_score", 50),
+            "emotional_confidence": ai_response.get("emotional_confidence", 0.5),
+            "stress_confidence": ai_response.get("stress_confidence", 0.5),
+            "warmth_score": ai_response.get("warmth_score", 50)
         }
     )
 

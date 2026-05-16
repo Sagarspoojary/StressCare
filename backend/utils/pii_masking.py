@@ -14,6 +14,10 @@ EMAIL_PATTERN = re.compile(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}')
 AADHAAR_PATTERN = re.compile(r'\b\d{4}\s?\d{4}\s?\d{4}\b')
 PHONE_PATTERN = re.compile(r'(?<!\d)(?:\d[\s-]*){9}\d(?!\d)')
 PAN_PATTERN = re.compile(r'\b[A-Z]{5}[0-9]{4}[A-Z]{1}\b')
+CREDIT_CARD_PATTERN = re.compile(r'\b(?:\d[ -]*?){13,16}\b')
+IFSC_PATTERN = re.compile(r'\b[A-Z]{4}0[A-Z0-9]{6}\b')
+BANK_ACC_PATTERN = re.compile(r'(?i)\b(?:a/c|account|acct|acc)[\s:]*#?\s*(\d{9,18})\b')
+PASSWORD_PATTERN = re.compile(r'(?i)\b(?:password|pass|pwd|pin)[\s:]+([^\s]+)')
 GENDER_PATTERN = re.compile(r'(?i)\b(male|female|boy|girl|man|woman)\b')
 
 NAME_CONTEXT_PATTERNS = [
@@ -68,7 +72,8 @@ class PrivacyMasker:
         self.reverse_mapping = {} # Original -> Token
         self.counters = {
             "USER": 1, "PHONE": 1, "EMAIL": 1, "AADHAAR": 1, 
-            "PAN": 1, "CITY": 1, "ENTITY": 1, "GENDER": 1
+            "PAN": 1, "CITY": 1, "ENTITY": 1, "GENDER": 1,
+            "CREDITCARD": 1, "BANK": 1, "IFSC": 1, "PASSWORD": 1
         }
 
     def _get_token(self, entity_type: str, val: str) -> str:
@@ -116,6 +121,14 @@ class PrivacyMasker:
             entities.append(("PHONE", match.group()))
         for match in PAN_PATTERN.finditer(current_text):
             entities.append(("PAN", match.group()))
+        for match in CREDIT_CARD_PATTERN.finditer(current_text):
+            entities.append(("CREDITCARD", match.group()))
+        for match in IFSC_PATTERN.finditer(current_text):
+            entities.append(("IFSC", match.group()))
+        for match in BANK_ACC_PATTERN.finditer(current_text):
+            entities.append(("BANK", match.group(1))) # Group 1 is the actual number
+        for match in PASSWORD_PATTERN.finditer(current_text):
+            entities.append(("PASSWORD", match.group(1))) # Group 1 is the actual password
         for match in GENDER_PATTERN.finditer(current_text):
             entities.append(("GENDER", match.group()))
 

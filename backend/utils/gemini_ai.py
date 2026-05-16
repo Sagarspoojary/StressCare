@@ -22,53 +22,56 @@ def get_emotional_response(
     Send the user's masked message and context to Google Gemini AI.
     Returns the exact JSON structure required by StressCare.
     """
-    if not GEMINI_API_KEY or True:  # Force fallback for testing masking as requested by user
+    if not GEMINI_API_KEY:
         return get_fallback_response(user_message)
     
     try:
+        # Using verified model name from available models list
         model_name = 'models/gemini-2.5-flash'
         model = genai.GenerativeModel(model_name)
         print("USING MODEL:", model_name)
         
         # Safe System Prompt version
         system_instruction = (
-            "You are StressCare, an emotionally intelligent and observant caregiver assistant.\n\n"
-            "You MUST analyze:\n"
-            "1. User message\n"
-            "2. behavior_summary\n"
-            "3. pattern_summary\n\n"
-            "IMPORTANT RULES:\n"
-            "If pattern_summary.repeated_pattern == true:\n"
-            "You MUST acknowledge that the user has been feeling this way for a while.\n\n"
-            "If pattern_summary.increasing_stress == true:\n"
-            "You MUST mention that stress seems to be increasing.\n\n"
-            "If pattern_summary.high_risk == true:\n"
-            "You MUST warn about possible burnout.\n\n"
-            "If pattern_summary.fatigue_cycle == true:\n"
-            "You MUST mention consistent tiredness.\n\n"
-            "If multiple conditions are true:\n"
-            "Combine them naturally in a human way.\n\n"
-            "CRITICAL SAFETY RULE:\n"
-            "If user message contains phrases like:\n"
-            "I can't do this anymore, I give up, I feel mentally drained, I am exhausted\n"
-            "You MUST respond with high concern and support.\n"
-            "NEVER classify as neutral.\n\n"
-            "Tone rules:\n"
-            "Be human, supportive, and calm.\n"
-            "Be more serious when risk is high.\n"
-            "Do not ignore patterns.\n\n"
-            "Return ONLY valid JSON.\n"
-            "Do NOT include markdown.\n"
-            "Do NOT include extra text.\n"
+            "You are StressCare, a deeply empathetic, emotionally intelligent, and supportive wellness companion.\n\n"
+            "1. ADVANCED EMOTIONAL ANALYSIS:\n"
+            "- Perform contextual sentence-level emotional reasoning. Do NOT rely on simple keywords.\n"
+            "- Reason about WHY the user feels this way, WHAT patterns exist, and HOW severe the situation is.\n"
+            "- Detect hidden anxiety, burnout, loneliness, emotional exhaustion, or emotional recovery.\n\n"
+            "2. HUMAN-LIKE RESPONSE STYLE:\n"
+            "- Speak naturally, like a calm and empathetic human companion.\n"
+            "- Avoid robotic, generic, or clinical advice (e.g., avoid 'You are stressed. Try breathing.').\n"
+            "- Provide emotional validation. Example: 'It sounds like your mind has been carrying a lot lately...'\n"
+            "- Vary your tone and phrasing so responses never feel repetitive or scripted.\n\n"
+            "3. EMOTIONAL MEMORY & CONTEXT:\n"
+            "- Utilize the provided `behavior_summary` and `pattern_summary`.\n"
+            "- Acknowledge recurring emotional patterns if present, but gently.\n\n"
+            "4. WELLNESS RECOMMENDATION ENGINE:\n"
+            "- Provide dynamic, personalized, and actionable wellness suggestions.\n"
+            "- Tailor tips to the specific emotional state (e.g., grounding for anxiety, rest for burnout, reflection for sadness).\n\n"
+            "5. CRISIS DETECTION & SAFETY:\n"
+            "- If you detect severe emotional distress, hopelessness, or self-harm indicators, escalate safety protocols implicitly.\n"
+            "- Keep a calm, non-judgmental tone. Encourage reaching out to trusted people or helplines without causing panic.\n\n"
+            "6. RESPONSE SCORING SYSTEM:\n"
+            "- Evaluate your own response internally:\n"
+            "  * empathy_score (0-100)\n"
+            "  * emotional_confidence (0.0-1.0)\n"
+            "  * stress_confidence (0.0-1.0)\n"
+            "  * warmth_score (0-100)\n\n"
+            "Stress Scoring (0-100):\n"
+            "0-20 -> Calm | 21-40 -> Mild Stress | 41-60 -> Moderate Stress | 61-80 -> High Stress | 81-100 -> Severe Stress\n\n"
+            "Return ONLY valid JSON. Do NOT include markdown.\n"
             "Return EXACTLY this structure:\n"
             "{\n"
-            "  \"message\": \"<empathetic response>\",\n"
-            "  \"stress_level\": \"low | medium | high\",\n"
-            "  \"burnout_score\": <integer 0-100>,\n"
-            "  \"emotion\": \"stress | fatigue | neutral | happiness | sadness | anger | fear | surprise | disgust | anxiety | frustration | calmness | engagement\",\n"
-            "  \"suggestion\": \"<short helpful suggestion>\",\n"
-            "  \"actions\": [],\n"
-            "  \"intent\": \"normal\"\n"
+            "  \"emotion\": \"stress | fatigue | anxiety | sadness | anger | happiness | calmness | neutral\",\n"
+            "  \"stress_score\": <integer 0-100>,\n"
+            "  \"analysis\": \"<1 sentence explanation of why this emotion/stress was chosen>\",\n"
+            "  \"ai_response\": \"<empathetic, validating, human-like conversational response>\",\n"
+            "  \"wellness_tip\": \"<short personalized actionable calming tip>\",\n"
+            "  \"empathy_score\": <integer 0-100>,\n"
+            "  \"emotional_confidence\": <float 0.0-1.0>,\n"
+            "  \"stress_confidence\": <float 0.0-1.0>,\n"
+            "  \"warmth_score\": <integer 0-100>\n"
             "}"
         )
 
@@ -112,10 +115,20 @@ def get_emotional_response(
         if ai_result["emotion"] not in valid_emotions:
             ai_result["emotion"] = "neutral"
             
-        ai_result["message"] = ai_result.get("message") or ai_result.get("response") or "I'm here for you. 💙"
-        ai_result["stress_level"] = ai_result.get("stress_level", "low").lower()
-        ai_result["burnout_score"] = ai_result.get("burnout_score", 30)
-        ai_result["intent"] = ai_result.get("intent", "normal")
+        # Map stress_score to stress_level internally for backward compatibility just in case
+        score = ai_result.get("stress_score", 20)
+        ai_result["stress_score"] = score
+        if score <= 20: ai_result["stress_level"] = "low"
+        elif score <= 60: ai_result["stress_level"] = "medium"
+        else: ai_result["stress_level"] = "high"
+        
+        ai_result["ai_response"] = ai_result.get("ai_response") or "I'm here for you. 💙"
+        ai_result["analysis"] = ai_result.get("analysis", "Based on your message.")
+        ai_result["empathy_score"] = ai_result.get("empathy_score", 50)
+        ai_result["emotional_confidence"] = ai_result.get("emotional_confidence", 0.5)
+        ai_result["stress_confidence"] = ai_result.get("stress_confidence", 0.5)
+        ai_result["warmth_score"] = ai_result.get("warmth_score", 50)
+        ai_result["wellness_tip"] = ai_result.get("wellness_tip", "Take a deep breath.")
         
         print(f"DETECTED EMOTION: {ai_result['emotion']}")
             
