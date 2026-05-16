@@ -43,7 +43,7 @@ def get_user_from_token(authorization: str):
     
     token = authorization.replace("Bearer ", "")
     
-    if token.startswith("ya29.") or token == "hackathon_token":
+    if token.startswith("ya29.") or token == "hackathon_token" or token == "hackathon_testing_token":
         print("Bypassing verification for testing token/access token")
         payload = {
             "user_id": "test_uid",

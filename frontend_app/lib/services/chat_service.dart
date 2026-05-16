@@ -15,9 +15,15 @@ class ChatService {
     String session_id = "default",
     String inputType = "text",
   }) async {
-    // 🔥 Get a FRESH token directly from Firebase to prevent 1-hour expiration 401 errors!
+    // 🔥 Get a FRESH token directly from Firebase to prevent 1-hour expiration 401 errors
     final user = FirebaseAuth.instance.currentUser;
-    final token = user != null ? await user.getIdToken(true) : null;
+    String? token = user != null ? await user.getIdToken(true) : null;
+    
+    // Fallback to SharedPreferences if FirebaseAuth is null (e.g. hackathon test login)
+    if (token == null) {
+      final prefs = await SharedPreferences.getInstance();
+      token = prefs.getString("auth_token");
+    }
 
     final res = await http.post(
       Uri.parse("$baseUrl/chat/message"),
