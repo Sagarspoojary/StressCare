@@ -50,9 +50,11 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         try {
           await openWebCamera(context, (msg) {
             if (mounted) {
+              final emotion = _parseEmotionFromResult(msg);
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(msg)),
+                SnackBar(content: Text("Face Scanner Detected: $emotion. Analyzing mood...")),
               );
+              _sendFaceEmotionMessage(emotion);
             }
           });
         } catch (e) {
@@ -67,9 +69,11 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         
         if (result != null && result is String) {
           if (mounted) {
+            final emotion = _parseEmotionFromResult(result);
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(result)),
+              SnackBar(content: Text("Face Scanner Detected: $emotion. Analyzing mood...")),
             );
+            _sendFaceEmotionMessage(emotion);
           }
         }
       }
@@ -80,6 +84,13 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         );
       }
     }
+  }
+
+  String _parseEmotionFromResult(String result) {
+    if (result.contains("Live Emotion Detected: ")) {
+      return result.replaceAll("Live Emotion Detected: ", "").trim();
+    }
+    return result.trim();
   }
 
   void _openFilePicker() async {
@@ -369,6 +380,68 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         
         // 🚨 EMERGENCY DETECTION & PRIORITY LOGIC (Robust Suicide/Self-Harm Detection)
         // Note: Modal popup triggers were removed to avoid UI interruption
+        
+        // Final scroll to bottom for AI response
+        _scrollToBottom();
+      }
+    } catch (e) {
+      setState(() => _loading = false);
+      _showSnack("Connection error");
+    }
+  }
+
+  // 🎭 SEND FACE EMOTION TO GEMINI
+  Future<void> _sendFaceEmotionMessage(String emotion) async {
+    final text = "My face scanner detected my current facial expression as: $emotion. Can you analyze this?";
+    
+    // STEP 1: Immediately add user message to list and update UI
+    setState(() {
+      _messages.add({"role": "user", "content": text});
+      _loading = true;
+    });
+
+    // STEP 2: Auto-scroll to bottom after user message
+    _scrollToBottom();
+
+    try {
+      // STEP 3: Call backend API
+      final res = await ChatService.sendMessage(
+        message: text,
+        session_id: _currentSessionId,
+        ghostMode: _ghostMode,
+        inputType: "face_emotion",
+      );
+
+      setState(() => _loading = false);
+
+      if (res["error"] != null || res["detail"] != null) {
+        _showSnack(res["error"] ?? res["detail"]);
+      } else {
+        print("API RESPONSE: $res");
+        
+        // STEP 4: Update user message & add AI response
+        setState(() {
+          // Find the last user message and update it with the masked version
+          for (int i = _messages.length - 1; i >= 0; i--) {
+            if (_messages[i]["role"] == "user") {
+              _messages[i]["content"] = res["masked_text"] ?? res["masked_message"] ?? _messages[i]["content"];
+              break;
+            }
+          }
+
+          _messages.add({
+            "chat_id": res["chat_id"],
+            "role": "assistant",
+            "content": _unmaskText(res["ai_response"] ?? ""),
+            "stress_score": res["stress_score"],
+            "stress_level": res["stress_level"] ?? "low",
+            "emotion": emotion.toLowerCase(), // Save and display the scanned face emotion
+            "confidence": res["confidence"],
+            "analysis": res["analysis"],
+            "wellness_tip": res["wellness_tip"],
+            "emergency": res["emergency"] == true,
+          });
+        });
         
         // Final scroll to bottom for AI response
         _scrollToBottom();
