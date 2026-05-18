@@ -936,25 +936,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
               "How are you feeling today, Sagar?",
               style: TextStyle(color: textColor.withOpacity(0.5), fontSize: 18, fontWeight: FontWeight.w500),
             ),
-            const SizedBox(height: 60),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 40),
-              child: Wrap(
-                spacing: 16,
-                runSpacing: 16,
-                alignment: WrapAlignment.center,
-                children: [
-                  _buildQuickActionCard(Icons.chat_bubble_outline_rounded, "Talk Freely"),
-                  _buildQuickActionCard(Icons.insights_rounded, "View Patterns", () {
-                    Navigator.pushNamed(context, '/usage_patterns');
-                  }),
 
-                  _buildQuickActionCard(Icons.volunteer_activism_rounded, "Care Support", () {
-                    Navigator.pushNamed(context, '/helpline');
-                  }),
-                ],
-              ),
-            ),
           ],
         ),
       ),
