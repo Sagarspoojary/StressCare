@@ -1385,39 +1385,27 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                   Navigator.pop(context);
                 }, color: primaryColor),
                 
-                // 🔒 FEATURE 2: PRIVACY LOCK UI
-                if (_isLocked)
-                  _buildLockedHistoryState()
-                else
-                  _buildDrawerItem(Icons.history_rounded, "Session History", () {
-                    Navigator.pop(context); // Close drawer
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => SessionHistoryScreen(
-                          isGhostMode: _ghostMode,
-                          onSessionSelected: (sessionId, messages) {
-                            setState(() {
-                              _currentSessionId = sessionId;
-                              _messages = List<Map<String, dynamic>>.from(messages);
-                            });
-                            _scrollToBottom();
-                          },
-                        ),
+                _buildDrawerItem(Icons.history_rounded, "Session History", () {
+                  Navigator.pop(context); // Close drawer
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => SessionHistoryScreen(
+                        isGhostMode: _ghostMode,
+                        onSessionSelected: (sessionId, messages) {
+                          setState(() {
+                            _currentSessionId = sessionId;
+                            _messages = List<Map<String, dynamic>>.from(messages);
+                          });
+                          _scrollToBottom();
+                        },
                       ),
-                    );
-                  }),
+                    ),
+                  );
+                }),
                   
                 const Divider(indent: 24, endIndent: 24, height: 32),
                 
-                _buildDrawerItem(
-                  _isLocked ? Icons.lock_open_rounded : Icons.lock_outline_rounded, 
-                  _isLocked ? "Unlock History" : "Lock History", 
-                  () {
-                    setState(() => _isLocked = !_isLocked);
-                    _saveSettings();
-                  }
-                ),
                 _buildDrawerItem(
                   _ghostMode ? Icons.visibility_off_rounded : Icons.visibility_rounded, 
                   _ghostMode ? "Ghost Mode: ON" : "Ghost Mode: OFF", 
