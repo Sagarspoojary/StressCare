@@ -48,3 +48,11 @@ backend/*.json
 google-services.json
 frontend_app/android/app/google-services.json
 frontend_app/ios/Runner/GoogleService-Info.plist
+
+# Temp and Screenshots
+*.png
+*.jpg
+*.jpeg
+scratch/
+test_*.py
+.DS_Store

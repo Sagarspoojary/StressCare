@@ -8,4 +8,4 @@ sleep 2
 
 echo "Starting Frontend on EXACTLY port 3000..."
 cd ../frontend_app
-flutter run -d chrome --web-port=3000
+flutter run -d chrome --web-port=3000q
