@@ -1223,38 +1223,57 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildRecordingAnimation() {
+    return const _RecordingWaveform();
+  }
+}
+
+class _RecordingWaveform extends StatefulWidget {
+  const _RecordingWaveform({Key? key}) : super(key: key);
+
+  @override
+  State<_RecordingWaveform> createState() => _RecordingWaveformState();
+}
+
+class _RecordingWaveformState extends State<_RecordingWaveform> {
+  @override
+  Widget build(BuildContext context) {
     return Container(
       height: 40,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Text("Recording...", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
-          const SizedBox(width: 16),
-          ...List.generate(15, (index) {
-            return TweenAnimationBuilder<double>(
-              tween: Tween<double>(begin: 0.1, end: math.Random().nextDouble() * 0.8 + 0.2),
-              duration: Duration(milliseconds: 200 + math.Random().nextInt(300)),
-              curve: Curves.easeInOut,
-              builder: (context, value, child) {
-                return Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 2),
-                  width: 3,
-                  height: 30 * value,
-                  decoration: BoxDecoration(
-                    color: Colors.redAccent.withOpacity(0.8),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                );
-              },
-              onEnd: () {
-                if (mounted && _listening) {
-                  setState(() {});
-                }
-              },
-            );
-          }),
-        ],
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.centerLeft,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            const Text("Recording...", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+            const SizedBox(width: 12),
+            ...List.generate(12, (index) {
+              return TweenAnimationBuilder<double>(
+                key: ValueKey(index),
+                tween: Tween<double>(begin: 0.1, end: math.Random().nextDouble() * 0.8 + 0.2),
+                duration: Duration(milliseconds: 200 + math.Random().nextInt(300)),
+                curve: Curves.easeInOut,
+                builder: (context, value, child) {
+                  return Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    width: 3,
+                    height: 30 * value,
+                    decoration: BoxDecoration(
+                      color: Colors.redAccent.withOpacity(0.8),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  );
+                },
+                onEnd: () {
+                  if (mounted) {
+                    setState(() {});
+                  }
+                },
+              );
+            }),
+          ],
+        ),
       ),
     );
   }
