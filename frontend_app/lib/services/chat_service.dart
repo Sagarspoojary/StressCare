@@ -8,14 +8,7 @@ import '../config/api_config.dart';
 class ChatService {
   static const String baseUrl = ApiConfig.baseUrl;
 
-  // 📤 SEND MESSAGE TO BACKEND
-  static Future<Map<String, dynamic>> sendMessage({
-    required String message,
-    bool ghostMode = false,
-    String session_id = "default",
-    String inputType = "text",
-  }) async {
-    // 🔥 Get a FRESH token directly from Firebase to prevent 1-hour expiration 401 errors
+  static Future<String?> getFreshFirebaseToken() async {
     final user = FirebaseAuth.instance.currentUser;
     String? token = user != null ? await user.getIdToken(true) : null;
     
@@ -24,6 +17,18 @@ class ChatService {
       final prefs = await SharedPreferences.getInstance();
       token = prefs.getString("auth_token");
     }
+    return token;
+  }
+
+  // 📤 SEND MESSAGE TO BACKEND
+  static Future<Map<String, dynamic>> sendMessage({
+    required String message,
+    bool ghostMode = false,
+    String session_id = "default",
+    String inputType = "text",
+  }) async {
+    // 🔥 Get a FRESH token directly from Firebase to prevent 1-hour expiration 401 errors
+    final token = await getFreshFirebaseToken();
 
     final res = await http.post(
       Uri.parse("$baseUrl/chat/message"),
