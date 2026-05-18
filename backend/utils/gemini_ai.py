@@ -16,7 +16,8 @@ def get_emotional_response(
     recent_stress_levels: list = [], 
     input_type: str = "text",
     behavior_summary: dict = None,
-    pattern_summary: dict = None
+    pattern_summary: dict = None,
+    audio_features: dict = None
 ) -> dict:
     """
     Send the user's masked message and context to Google Gemini AI.
@@ -89,7 +90,8 @@ def get_emotional_response(
             "recent_stress_levels": recent_stress_levels,
             "behavior_summary": behavior_summary,
             "pattern_summary": pattern_summary,
-            "input_type": input_type
+            "input_type": input_type,
+            "audio_features": audio_features
         }
 
         prompt = f"System Instruction: {system_instruction}\n\nInput Context: {json.dumps(input_data)}"
