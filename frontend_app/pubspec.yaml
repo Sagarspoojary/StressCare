@@ -40,6 +40,7 @@ dependencies:
   local_auth: ^2.1.8
   flutter_secure_storage: ^9.0.0
   just_audio: ^0.10.5
+  audio_waveforms: ^2.0.2
 
 dev_dependencies:
   flutter_test:
