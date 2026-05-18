@@ -470,11 +470,24 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     return "🟢";
   }
 
+  String _calculateStressLevel(dynamic score) {
+    if (score == null) return "LOW";
+    final s = score is num ? score.toInt() : int.tryParse(score.toString()) ?? 0;
+    if (s <= 20) return "LOW";
+    if (s <= 40) return "MILD";
+    if (s <= 60) return "MODERATE";
+    if (s <= 80) return "HIGH";
+    return "SEVERE";
+  }
+
   Color _getStressColor(dynamic level) {
     if (level == null) return Colors.green;
-    final l = level.toString().toLowerCase();
-    if (l == "high") return Colors.red;
-    if (l == "medium") return Colors.orange;
+    final l = level.toString().toUpperCase();
+    if (l == "LOW" || l == "CALM") return Colors.green;
+    if (l == "MILD") return Colors.blue;
+    if (l == "MODERATE") return Colors.orange;
+    if (l == "HIGH") return Colors.red;
+    if (l == "SEVERE") return Colors.red[900] ?? Colors.red;
     return Colors.green;
   }
 
@@ -886,7 +899,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildModernMessageBubble(Map<String, dynamic> msg, bool isUser) {
-    final Color stressColor = isUser ? Colors.transparent : _getStressColor(msg["stress_level"]);
+    final Color stressColor = isUser ? Colors.transparent : _getStressColor(_calculateStressLevel(msg["stress_score"]));
     
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
@@ -968,7 +981,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildAIBubbleHeader(Map<String, dynamic> msg) {
-    final color = _getStressColor(msg["stress_level"]);
+    final color = _getStressColor(_calculateStressLevel(msg["stress_score"]));
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -993,7 +1006,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           ),
           const SizedBox(width: 8),
           Text(
-            "Stress: ${msg["stress_level"]?.toString().toUpperCase() ?? "LOW"}",
+            "Stress: ${_calculateStressLevel(msg["stress_score"])}",
             style: TextStyle(color: textColor.withOpacity(0.4), fontSize: 10, fontWeight: FontWeight.bold),
           ),
         ],
@@ -1003,7 +1016,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
   Widget _buildStressIndicator(Map<String, dynamic> msg) {
     if (msg["stress_score"] == null) return const SizedBox();
-    final color = _getStressColor(msg["stress_level"]);
+    final color = _getStressColor(_calculateStressLevel(msg["stress_score"]));
     final score = msg["stress_score"] is num ? (msg["stress_score"] as num).toInt() : 0;
     
     return Padding(
