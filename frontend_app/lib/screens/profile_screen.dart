@@ -74,13 +74,17 @@ class _ProfileScreenState extends State<ProfileScreen>
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       _email = user.email ?? "";
+      _nameCtrl.text = user.displayName ?? ""; // 🌟 First fallback: read directly from FirebaseAuth
       final pin = await _storage.read(key: "app_pin");
       try {
         final doc = await FirebaseFirestore.instance
             .collection("users").doc(user.uid).get();
         if (doc.exists) {
           final d = doc.data()!;
-          _nameCtrl.text = d["full_name"] ?? "";
+          final fetchedName = d["full_name"] ?? d["name"] ?? "";
+          if (fetchedName.toString().isNotEmpty) {
+            _nameCtrl.text = fetchedName;
+          }
           _phoneCtrl.text = d["phone_number"] ?? "";
           if (d["createdAt"] != null) {
             final dt = (d["createdAt"] as Timestamp).toDate();
@@ -189,14 +193,20 @@ class _ProfileScreenState extends State<ProfileScreen>
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
     try {
-      await FirebaseFirestore.instance.collection("users").doc(user.uid).update({
+      // 1. Update Firebase Auth displayName so it is available locally immediately
+      await user.updateDisplayName(_nameCtrl.text.trim());
+
+      // 2. Write to Firestore using set with merge options (guarantees success even if document does not exist yet)
+      await FirebaseFirestore.instance.collection("users").doc(user.uid).set({
         "full_name": _nameCtrl.text.trim(),
+        "name": _nameCtrl.text.trim(),
         "phone_number": _phoneCtrl.text.trim(),
-      });
+      }, SetOptions(merge: true));
+
       if (mounted) {
         setState(() {}); // 🌟 Force immediate UI re-build to refresh name & avatar initials!
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Profile saved!"), backgroundColor: _teal));
+          const SnackBar(content: Text("Profile saved successfully!"), backgroundColor: _teal));
       }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(
