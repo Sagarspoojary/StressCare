@@ -32,7 +32,7 @@ def health_gemini():
     api_key = os.getenv("GEMINI_API_KEY")
     key_present = api_key is not None and len(api_key) > 0
     connection_status = "error"
-    model_name = "gemini-1.5-flash"
+    model_name = "gemini-2.5-flash"
     
     if key_present:
         try:

@@ -33,7 +33,7 @@ def get_emotional_response(
         return get_fallback_response(user_message, reason="api_error")
     
     fallback_reason = "api_error"
-    model_name = 'models/gemini-1.5-flash' # Upgraded standard model for better safety metrics
+    model_name = 'models/gemini-2.5-flash'
     max_retries = 2
     
     try:
