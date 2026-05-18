@@ -533,9 +533,12 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   Future<void> _sendAudioToBackend(Uint8List bytes) async {
     setState(() => _loading = true);
     try {
+      final token = await ChatService.getFreshFirebaseToken();
+      
       // 2. Prepare Multipart Request
       final uri = Uri.parse('${ApiConfig.baseUrl}/audio/analyze');
       final request = http.MultipartRequest('POST', uri)
+        ..headers['Authorization'] = 'Bearer $token'
         ..files.add(http.MultipartFile.fromBytes(
           'file',
           bytes,
