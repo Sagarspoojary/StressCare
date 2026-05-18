@@ -18,6 +18,7 @@ import '../config/api_config.dart';
 import '../utils/web_helper.dart';
 import '../widgets/waveform_player.dart';
 import 'face_detection_screen.dart';
+import 'session_history_screen.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -162,6 +163,19 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool("ghostMode", _ghostMode);
     await prefs.setBool("privacyLock", _isLocked);
+  }
+
+  Future<void> _toggleGhostMode(bool val) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool("ghostMode", val);
+    setState(() {
+      _ghostMode = val;
+    });
+    if (val) {
+      _showSnack("Ghost Mode Active 👻", isError: false);
+    } else {
+      _showSnack("Ghost Mode Disabled 👤", isError: false);
+    }
   }
 
   @override
@@ -609,7 +623,11 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       final token = await ChatService.getFreshFirebaseToken();
       
       // 2. Prepare Multipart Request
-      final uri = Uri.parse('${ApiConfig.baseUrl}/audio/analyze');
+      final uri = Uri.parse(
+        '${ApiConfig.baseUrl}/audio/analyze'
+        '?ghost_mode=$_ghostMode'
+        '&session_id=$_currentSessionId'
+      );
       final request = http.MultipartRequest('POST', uri)
         ..headers['Authorization'] = 'Bearer $token'
         ..files.add(http.MultipartFile.fromBytes(
@@ -779,8 +797,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                       Switch(
                         value: _ghostMode,
                         onChanged: (val) {
-                          setState(() => _ghostMode = val);
-                          if (val) _showSnack("Ghost Mode Active", isError: false);
+                          _toggleGhostMode(val);
                         },
                         activeColor: primaryColor,
                         inactiveThumbColor: Colors.grey,
@@ -1373,7 +1390,22 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                   _buildLockedHistoryState()
                 else
                   _buildDrawerItem(Icons.history_rounded, "Session History", () {
-                    _loadHistory();
+                    Navigator.pop(context); // Close drawer
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => SessionHistoryScreen(
+                          isGhostMode: _ghostMode,
+                          onSessionSelected: (sessionId, messages) {
+                            setState(() {
+                              _currentSessionId = sessionId;
+                              _messages = List<Map<String, dynamic>>.from(messages);
+                            });
+                            _scrollToBottom();
+                          },
+                        ),
+                      ),
+                    );
                   }),
                   
                 const Divider(indent: 24, endIndent: 24, height: 32),
@@ -1390,8 +1422,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                   _ghostMode ? Icons.visibility_off_rounded : Icons.visibility_rounded, 
                   _ghostMode ? "Ghost Mode: ON" : "Ghost Mode: OFF", 
                   () {
-                    setState(() => _ghostMode = !_ghostMode);
-                    _saveSettings();
+                    _toggleGhostMode(!_ghostMode);
                   }
                 ),
               ],

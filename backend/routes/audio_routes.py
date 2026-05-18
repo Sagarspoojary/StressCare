@@ -20,7 +20,9 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 @router.post("/audio/analyze")
 async def analyze_audio(
     file: UploadFile = File(...),
-    authorization: Optional[str] = Header(None)
+    authorization: Optional[str] = Header(None),
+    ghost_mode: Optional[bool] = False,
+    session_id: Optional[str] = "voice_session"
 ):
     """
     Complete AI Voice Analysis Pipeline:
@@ -90,10 +92,10 @@ async def analyze_audio(
         }
 
         # 6. Save to Firestore (History)
-        if db:
+        if db and not ghost_mode:
             db.collection("chats").add({
                 "user_id": user_id,
-                "session_id": "voice_session",
+                "session_id": session_id,
                 "user_message": masked_text,
                 "ai_response": final_payload["ai_response"],
                 "emotion": final_payload["emotion"],

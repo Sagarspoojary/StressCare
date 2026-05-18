@@ -50,12 +50,14 @@ class ChatService {
     
     // 🔥 Firebase Integration (Save chat history)
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        final textToSave = data["masked_text"] ?? message;
-        await FirestoreService.saveChatHistory(user.uid, textToSave, true);
-        if (data["ai_response"] != null) {
-          await FirestoreService.saveChatHistory(user.uid, data["ai_response"], false);
+      if (!ghostMode) {
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          final textToSave = data["masked_text"] ?? message;
+          await FirestoreService.saveChatHistory(user.uid, textToSave, true);
+          if (data["ai_response"] != null) {
+            await FirestoreService.saveChatHistory(user.uid, data["ai_response"], false);
+          }
         }
       }
     } catch (e) {
