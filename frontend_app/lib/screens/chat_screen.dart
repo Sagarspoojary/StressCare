@@ -19,6 +19,7 @@ import '../utils/web_helper.dart';
 import '../widgets/waveform_player.dart';
 import 'face_detection_screen.dart';
 import 'session_history_screen.dart';
+import '../widgets/pattern_lock_widget.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -147,6 +148,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     }
     const storage = FlutterSecureStorage();
     final pin = await storage.read(key: "app_pin");
+    final pattern = await storage.read(key: "app_pattern");
     
     setState(() {
       _ghostMode = prefs.getBool("ghostMode") ?? false;
@@ -154,11 +156,17 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       _pinCode = pin;
     });
     
-    // If locked and PIN exists, trigger unlock!
-    if (_isLocked && pin != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _showPinDialog(title: "Enter PIN to Unlock", isSetup: false);
-      });
+    // If locked and lock credentials exist, trigger unlock!
+    if (_isLocked) {
+      if (pattern != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _showPatternUnlockDialog();
+        });
+      } else if (pin != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _showPinDialog(title: "Enter PIN to Unlock", isSetup: false);
+        });
+      }
     }
   }
 
@@ -692,6 +700,45 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       setState(() => _isLocked = true);
       _showSnack("Privacy Lock Activated", isError: false);
     }
+  }
+
+  void _showPatternUnlockDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => WillPopScope(
+        onWillPop: () async => false,
+        child: AlertDialog(
+          backgroundColor: surfaceColor,
+          title: Center(
+            child: Text(
+              "Draw Pattern to Unlock",
+              style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+          ),
+          content: Container(
+            width: double.maxFinite,
+            child: PatternLockWidget(
+              instructionText: "Draw your pattern to unlock app",
+              activeColor: primaryColor,
+              onPatternComplete: (pattern) async {
+                const storage = FlutterSecureStorage();
+                final correctPattern = await storage.read(key: "app_pattern");
+                if (pattern == correctPattern) {
+                  Navigator.pop(ctx);
+                  setState(() {
+                    _isLocked = false;
+                  });
+                  _showSnack("Welcome back! Unlocked 🔓", isError: false);
+                } else {
+                  _showSnack("Incorrect pattern. Try again!", isError: true);
+                }
+              },
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   void _showPinDialog({required String title, required bool isSetup}) {

@@ -9,6 +9,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../services/auth_service.dart';
 import '../services/chat_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../widgets/pattern_lock_widget.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -31,6 +32,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   bool   _notifEnabled    = true;
   bool   _biometricEnabled = false;
   bool   _pinEnabled       = false;
+  bool   _patternEnabled   = false;
   
   // -- Dynamic Profile Stats Variables --
   int _totalSessions = 24;
@@ -76,6 +78,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       _email = user.email ?? "";
       _nameCtrl.text = user.displayName ?? ""; // 🌟 First fallback: read directly from FirebaseAuth
       final pin = await _storage.read(key: "app_pin");
+      final pattern = await _storage.read(key: "app_pattern");
       try {
         final doc = await FirebaseFirestore.instance
             .collection("users").doc(user.uid).get();
@@ -182,7 +185,11 @@ class _ProfileScreenState extends State<ProfileScreen>
         print("Error parsing live chat history for profile: $e");
       }
 
-      if (mounted) setState(() { _pinEnabled = pin != null; _loading = false; });
+      if (mounted) setState(() { 
+        _pinEnabled = pin != null; 
+        _patternEnabled = pattern != null; 
+        _loading = false; 
+      });
     } else {
       if (mounted) setState(() => _loading = false);
     }
@@ -572,8 +579,105 @@ class _ProfileScreenState extends State<ProfileScreen>
                 }
               },
             ),
+            SwitchListTile(
+              title: const Text("Pattern Lock", style: TextStyle(color: Colors.white)),
+              subtitle: const Text("3x3 pattern drawing lock", style: TextStyle(color: Colors.white54)),
+              value: _patternEnabled,
+              activeColor: _teal,
+              onChanged: (v) async {
+                if (v) {
+                  _showPatternSetup(set);
+                } else {
+                  await _storage.delete(key: "app_pattern");
+                  set(() => _patternEnabled = false);
+                  setState(() => _patternEnabled = false);
+                }
+              },
+            ),
             const SizedBox(height: 20),
           ]),
+        ),
+      ),
+    );
+  }
+
+  void _showPatternSetup(StateSetter setModalState) {
+    bool confirmMode = false;
+    String firstPattern = "";
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: _card,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (bCtx) => StatefulBuilder(
+        builder: (ctx, ps) => Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(bCtx).viewInsets.bottom + 24,
+            left: 24, right: 24, top: 24,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                confirmMode ? "Confirm Pattern" : "Setup Pattern Lock",
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              PatternLockWidget(
+                instructionText: confirmMode 
+                    ? "Draw the pattern again to confirm" 
+                    : "Connect at least 3 dots to set pattern",
+                activeColor: _teal,
+                onPatternComplete: (pattern) async {
+                  if (pattern.split('-').length < 3) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Pattern must connect at least 3 dots!"),
+                        backgroundColor: Colors.redAccent,
+                      ),
+                    );
+                    return;
+                  }
+                  if (!confirmMode) {
+                    ps(() {
+                      firstPattern = pattern;
+                      confirmMode = true;
+                    });
+                  } else {
+                    if (pattern == firstPattern) {
+                      await _storage.write(key: "app_pattern", value: pattern);
+                      setModalState(() => _patternEnabled = true);
+                      setState(() => _patternEnabled = true);
+                      Navigator.pop(bCtx);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Pattern lock set successfully!"),
+                          backgroundColor: _teal,
+                        ),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Patterns do not match! Try again."),
+                          backgroundColor: Colors.redAccent,
+                        ),
+                      );
+                      ps(() {
+                        confirmMode = false;
+                        firstPattern = "";
+                      });
+                    }
+                  }
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
