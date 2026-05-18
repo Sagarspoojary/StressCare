@@ -23,15 +23,20 @@ def get_emotional_response(
     Send the user's masked message and context to Google Gemini AI.
     Returns the exact JSON structure required by StressCare.
     """
-    if not GEMINI_API_KEY:
-        return get_fallback_response(user_message)
+    # 1. API KEY CHECK & LOGGING
+    key_exists = GEMINI_API_KEY is not None
+    key_prefix = GEMINI_API_KEY[:6] if key_exists else "None"
+    print(f"[GEMINI DEBUG] API KEY CHECK - Exist: {key_exists}, Prefix: {key_prefix}")
+
+    if not key_exists:
+        print("[GEMINI DEBUG] Fallback Trigger Reason: api_error (No API Key present)")
+        return get_fallback_response(user_message, reason="api_error")
+    
+    fallback_reason = "api_error"
+    model_name = 'models/gemini-1.5-flash' # Upgraded standard model for better safety metrics
+    max_retries = 2
     
     try:
-        # Using verified model name from available models list
-        model_name = 'models/gemini-2.5-flash'
-        model = genai.GenerativeModel(model_name)
-        print("USING MODEL:", model_name)
-        
         # Safe System Prompt version
         system_instruction = (
             "You are StressCare, a deeply empathetic, emotionally intelligent, and supportive wellness companion.\n\n"
@@ -100,29 +105,80 @@ def get_emotional_response(
         }
 
         prompt = f"System Instruction: {system_instruction}\n\nInput Context: {json.dumps(input_data)}"
-        
         print(f"--- GEMINI REQUEST (Model: {model_name}) ---\nPrompt: {prompt}\n-----------------------")
-        
-        response = model.generate_content(prompt)
-        text = response.text.strip()
-        
-        print(f"--- GEMINI RESPONSE ---\nText: {text}\n------------------------")
-        
-        raw_response = response.text.strip()
-        print(f"RAW GEMINI RESPONSE: {raw_response}")
-        
-        # Clean the response to ensure valid JSON (remove markdown code blocks manually)
-        json_text = raw_response
-        json_text = json_text.replace("```json", "").replace("```", "").strip()
-            
-        try:
-            ai_result = json.loads(json_text)
-            print(f"PARSED JSON: {ai_result}")
-        except Exception as json_err:
-            print(f"JSON PARSE ERROR: {json_err}")
-            print(f"RAW GEMINI RESPONSE FOR DEBUG: {raw_response}")
-            return get_fallback_response(user_message)
-        
+
+        # automated retry loop if parsing or safety blocks occur
+        ai_result = None
+        for attempt in range(1, max_retries + 1):
+            try:
+                print(f"[GEMINI DEBUG] Generating content, Attempt {attempt}/{max_retries}...")
+                model = genai.GenerativeModel(
+                    model_name,
+                    generation_config={"response_mime_type": "application/json"}
+                )
+                
+                response = model.generate_content(prompt)
+
+                # 2. SAFETY FILTER DETECTION & FINISH REASON LOGGING
+                if not response.candidates:
+                    print("[GEMINI DEBUG] Safety Filter Blocked Response: No response candidates returned.")
+                    if hasattr(response, 'prompt_feedback'):
+                        print(f"[GEMINI DEBUG] Safety Prompt Feedback: {response.prompt_feedback}")
+                    fallback_reason = "blocked"
+                    raise ValueError("Safety blocked: Candidates list is empty.")
+
+                candidate = response.candidates[0]
+                finish_reason = getattr(candidate, 'finish_reason', None)
+                print(f"[GEMINI DEBUG] Candidate Finish Reason: {finish_reason}")
+                
+                # Check for explicit safety blocks
+                finish_reason_str = str(finish_reason).lower()
+                if "safety" in finish_reason_str or "block" in finish_reason_str or "recitation" in finish_reason_str:
+                    print(f"[GEMINI DEBUG] Safety Block Triggered. Finish Reason: {finish_reason}")
+                    if hasattr(candidate, 'safety_ratings'):
+                        print(f"[GEMINI DEBUG] Safety Ratings: {candidate.safety_ratings}")
+                    fallback_reason = "blocked"
+                    raise ValueError(f"Safety blocked: Finish reason is {finish_reason}.")
+
+                # 3. RAW GEMINI RESPONSE LOGGING
+                raw_response = response.text
+                if not raw_response or not raw_response.strip():
+                    fallback_reason = "empty_response"
+                    raise ValueError("Gemini returned an empty response.")
+
+                print(f"[GEMINI DEBUG] RAW GEMINI RESPONSE: {raw_response}")
+
+                # 4. RESPONSE CLEANING
+                json_text = raw_response.strip()
+                # Remove code blocks if Gemini ignores generation_config and still sends them
+                json_text = json_text.replace("```json", "").replace("```", "").strip()
+
+                # 5. JSON PARSING & ERROR LOGGING
+                try:
+                    ai_result = json.loads(json_text)
+                    print(f"[GEMINI DEBUG] Parsed JSON successfully on attempt {attempt}: {ai_result}")
+                    break # Success, escape retry loop
+                except json.JSONDecodeError as json_err:
+                    print(f"[GEMINI DEBUG] JSONDecodeError on attempt {attempt}: {json_err}")
+                    print(f"[GEMINI DEBUG] Malformed Response Text: {json_text}")
+                    if attempt == max_retries:
+                        fallback_reason = "malformed_json"
+                        raise json_err
+                    print("[GEMINI DEBUG] Retrying due to JSON parsing error...")
+            except Exception as attempt_err:
+                err_str = str(attempt_err)
+                print(f"[GEMINI DEBUG] Attempt {attempt} encountered exception: {err_str}")
+                if attempt == max_retries:
+                    if "429" in err_str or "quota" in err_str.lower():
+                        fallback_reason = "quota"
+                    elif "timeout" in err_str.lower() or "deadline" in err_str.lower():
+                        fallback_reason = "timeout"
+                    raise attempt_err
+
+        if not ai_result:
+            fallback_reason = "empty_response"
+            raise ValueError("All attempts failed to populate ai_result.")
+
         # Validate and normalize fields
         valid_emotions = ["stress", "fatigue", "neutral", "happiness", "sadness", "anger", "fear", "surprise", "disgust", "anxiety", "frustration", "calmness", "engagement"]
         ai_result["emotion"] = ai_result.get("emotion", "neutral").lower()
@@ -152,10 +208,16 @@ def get_emotional_response(
         error_msg = str(e)
         if "429" in error_msg:
             print(f"!!! GEMINI QUOTA EXHAUSTED !!!: {error_msg}")
+            fallback_reason = "quota"
+        elif "timeout" in error_msg.lower() or "deadline" in error_msg.lower():
+            print(f"!!! GEMINI TIMEOUT !!!: {error_msg}")
+            fallback_reason = "timeout"
         else:
-            print(f"!!! GEMINI ERROR !!!: {error_msg}")
-        # Return a structured error response that routes to fallback
-        return get_fallback_response(user_message)
+            print(f"!!! GEMINI GENERAL ERROR !!!: {error_msg}")
+        
+        # 6. FALLBACK TRIGGER REASON LOGGING
+        print(f"[GEMINI DEBUG] Fallback Trigger Reason: {fallback_reason}")
+        return get_fallback_response(user_message, reason=fallback_reason)
 
 
 def _classify_emotion_with_ai(text: str) -> dict | None:
@@ -236,7 +298,30 @@ def _keyword_emotion_detect(msg_lower: str) -> str:
     return "neutral"
 
 
-def get_fallback_response(user_message: str) -> dict:
+def get_fallback_response(user_message: str, reason: str = "api_error") -> dict:
+    """
+    Wrapper for fallback response that prints the exact reason
+    and guarantees all response fields are completely matched.
+    """
+    print(f"[FALLBACK TRIGGERED] Reason: {reason}")
+    raw_fallback = _get_raw_fallback_response(user_message)
+    
+    # Enrich and align keys for compatibility
+    raw_fallback["ai_response"] = raw_fallback.get("message") or "I'm here for you. 💙"
+    raw_fallback["wellness_tip"] = raw_fallback.get("suggestion") or "Take a deep breath."
+    raw_fallback["stress_score"] = raw_fallback.get("burnout_score") or 20
+    raw_fallback["analysis"] = f"Fallback triggered. Reason: {reason}."
+    
+    # Baseline metrics
+    raw_fallback["empathy_score"] = 50
+    raw_fallback["emotional_confidence"] = 0.5
+    raw_fallback["stress_confidence"] = 0.5
+    raw_fallback["warmth_score"] = 50
+    
+    return raw_fallback
+
+
+def _get_raw_fallback_response(user_message: str) -> dict:
     """
     Upgraded fallback system for StressCare.
     Priority order:

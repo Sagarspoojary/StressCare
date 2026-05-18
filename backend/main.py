@@ -27,6 +27,30 @@ import google.generativeai as genai
 
 # ... existing code ...
 
+@app.get("/health/gemini")
+def health_gemini():
+    api_key = os.getenv("GEMINI_API_KEY")
+    key_present = api_key is not None and len(api_key) > 0
+    connection_status = "error"
+    model_name = "gemini-1.5-flash"
+    
+    if key_present:
+        try:
+            genai.configure(api_key=api_key)
+            model = genai.GenerativeModel(f"models/{model_name}")
+            response = model.generate_content("Ping")
+            if response.text:
+                connection_status = "ok"
+        except Exception as e:
+            print(f"[HEALTHCHECK DEBUG] Gemini connection failed: {e}")
+            connection_status = "error"
+            
+    return {
+        "gemini_key_present": key_present,
+        "gemini_connection": connection_status,
+        "model": model_name
+    }
+
 @app.get("/test-gemini")
 def test_gemini():
     print("\n--- GEMINI API TEST ---")

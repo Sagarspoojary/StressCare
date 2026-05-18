@@ -134,6 +134,12 @@ def send_message(
     pattern_summary = analyze_user_history(user_history_raw)
     
     # 🔴 STEP 4: GEMINI CALL (SAFE)
+    import os
+    gemini_key = os.getenv("GEMINI_API_KEY")
+    key_exists = gemini_key is not None
+    key_prefix = gemini_key[:6] if key_exists else "None"
+    print(f"[CHAT ROUTE DEBUG] API KEY CHECK - Exist: {key_exists}, Prefix: {key_prefix}")
+
     try:
         gemini_output = get_emotional_response(
             user_message=masked_message,
@@ -144,9 +150,13 @@ def send_message(
             pattern_summary=pattern_summary
         )
         if gemini_output:
+            # Check if fallback was returned
+            is_fallback = "Fallback triggered" in gemini_output.get("analysis", "")
+            print(f"[CHAT ROUTE DEBUG] Gemini Output Received. Is Fallback: {is_fallback}")
             ai_response.update(gemini_output)
             ai_message = ai_response.get("ai_response", ai_message)
     except Exception as e:
+        print(f"[CHAT ROUTE DEBUG] Fallback Trigger Reason: api_error (Exception: {e})")
         print(f"!!! GEMINI API ERROR !!!: {e}")
     
     # 🚨 EMERGENCY DETECTION & PRIORITY LOGIC (Robust Suicide/Self-Harm Detection)
