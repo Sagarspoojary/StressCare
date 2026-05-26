@@ -69,7 +69,15 @@ graph TD
 * **Textual Emotion Modeling:** Real-time deep contextual sentences-level sentiment evaluation powered by the state-of-the-art **Google Gemini AI** (`gemini-2.5-flash` with direct automatic fallbacks to `gemini-1.5-flash` and local regex/keyword-aware emotion classifiers).
 * **Vocal & Acoustic Feature Extraction:** Complete voice analytics processing pipelines. Audio uploads are decoded to extract wave properties like root-mean-square energy (volume/tension), pitch variation (ZCR), and spectral centroid (vocal speed).
 
-### 5. 🗑️ Permanent Multi-Session Batch Deletion
+### 5. 📷 On-Device Real-Time Face & Facial Emotion Analysis
+* **Live Camera Stream Integration:** Streams real-time frames directly from the front/back camera descriptors.
+* **On-Device Face Boundary Detection:** Uses `google_mlkit_face_detection` to track and draw precise face bounding boxes in real-time.
+* **Jitter Reduction:** Implements an **Exponential Moving Average (EMA)** algorithm for frame boundary box smoothing, ensuring a stable visual overlay.
+* **TensorFlow Lite Classification:** Feeds normalized face crops into a custom-loaded **TFLite model** (`assets/ml/emotion_model.tflite`) for lightning-fast, offline inference of user emotions (Happy, Sad, Angry, Surprised, Neutral, etc.).
+* **Adaptive Frame-Skip Optimization:** Dynamically adjusts processing skip-factors based on live device CPU/GPU thread latency to prevent UI lag on older devices.
+* **Wellness Workflow Binding:** Connects live facial readings directly to user session inputs to tailor context-driven emotional assistance.
+
+### 6. 🗑️ Permanent Multi-Session Batch Deletion
 * **Gmail-style Selection:** Toggle multi-select editing mode in the Session History screen. Long-press to edit and purge multiple selected chat records permanently across device caches and Cloud Firestore in a single API call.
 
 ---
@@ -80,6 +88,7 @@ graph TD
 * **Framework:** Flutter (Dart)
 * **Visuals & Charts:** Custom painted canvases, `fl_chart`
 * **Local Security:** `local_auth` (FaceID/Fingerprint), `flutter_secure_storage`
+* **On-Device ML:** `google_mlkit_face_detection`, `tflite_flutter`
 * **Audio & Voice:** `speech_to_text`, `record`, `just_audio`, `audio_waveforms`
 * **Cloud Integration:** Firebase Core, Firebase Auth, Cloud Firestore
 
