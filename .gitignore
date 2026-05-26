@@ -1,0 +1,32 @@
+# Root GitIgnore for StressCare
+
+# Local Environment variables (extremely sensitive)
+backend/.env
+backend/.env.*
+.env
+.env.*
+
+# Private API keys and service accounts
+backend/*.json
+backend/stresscare-*.json
+
+# macOS system files
+.DS_Store
+**/.DS_Store
+
+# Temporary / Sandbox testing scripts and logs
+scratch/
+temp_audio/
+*.log
+
+# Python virtual environment and cache folders
+backend/venv/
+backend/env/
+backend/__pycache__/
+backend/**/*.pyc
+
+# Flutter/Dart build files (optional, handled by frontend_app/.gitignore)
+**/build/
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
